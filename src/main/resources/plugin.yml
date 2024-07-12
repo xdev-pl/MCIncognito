@@ -1,0 +1,7 @@
+name: MinecraftIncognito
+version: '${project.version}'
+main: com.gmail.luxdevpl.minecraftincognito.MinecraftIncognito
+api-version: '1.16'
+depend: [ProtocolLib]
+commands:
+  incognito:
