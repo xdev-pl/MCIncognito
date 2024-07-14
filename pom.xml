@@ -62,9 +62,15 @@
           <id>dmulloy2-repo</id>
           <url>https://repo.dmulloy2.net/repository/public/</url>
       </repository>
+      <repository>
+          <name>Diorite repository</name>
+          <id>diorite</id>
+          <url>https://repo.diorite.org/repository/diorite/</url>
+      </repository>
   </repositories>
 
   <dependencies>
+
       <dependency>
           <groupId>com.destroystokyo.paper</groupId>
           <artifactId>paper-api</artifactId>

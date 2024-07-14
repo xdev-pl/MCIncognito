@@ -6,16 +6,12 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.wrappers.*;
-import com.comphenix.protocol.wrappers.EnumWrappers.PlayerInfoAction;
 import com.gmail.luxdevpl.minecraftincognito.MinecraftIncognito;
 import com.gmail.luxdevpl.minecraftincognito.basic.IncognitoUser;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class IncognitoPacketHandler {
@@ -31,10 +27,11 @@ public class IncognitoPacketHandler {
         protocolManager.addPacketListener(new PacketAdapter(plugin, PacketType.Play.Server.PLAYER_INFO) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                if (event.getPacket().getPlayerInfoAction().read(0) == PlayerInfoAction.ADD_PLAYER) {
-                    List<PlayerInfoData> originalData = event.getPacket().getPlayerInfoDataLists().read(0);
+                Set<EnumWrappers.PlayerInfoAction> actions = event.getPacket().getPlayerInfoActions().read(0);
+                if (actions.contains(EnumWrappers.PlayerInfoAction.ADD_PLAYER)) {
+                    List<PlayerInfoData> originalData = event.getPacket().getPlayerInfoDataLists().read(1);
                     List<PlayerInfoData> newData = updatePlayerInfoData(originalData);
-                    event.getPacket().getPlayerInfoDataLists().write(0, newData);
+                    event.getPacket().getPlayerInfoDataLists().write(1, newData);
                 }
             }
         });
@@ -42,6 +39,10 @@ public class IncognitoPacketHandler {
 
     private List<PlayerInfoData> updatePlayerInfoData(List<PlayerInfoData> originalInfo) {
         return originalInfo.stream().map(data -> {
+            if (data == null || data.getProfile() == null) {
+                return data;
+            }
+
             UUID uuid = data.getProfile().getUUID();
             Optional<IncognitoUser> optionalUser = MinecraftIncognito.getInstance().getUserManager().getIncognitoUser(uuid);
 
@@ -79,11 +80,25 @@ public class IncognitoPacketHandler {
         });
     }
 
+
+
     private void sendProfileUpdate(WrappedGameProfile profile, Player player) {
         ProtocolManager manager = MinecraftIncognito.getInstance().getProtocolManager();
         PacketContainer updatePacket = manager.createPacket(PacketType.Play.Server.PLAYER_INFO);
-        updatePacket.getPlayerInfoAction().write(0, EnumWrappers.PlayerInfoAction.UPDATE_DISPLAY_NAME);
-        updatePacket.getPlayerInfoDataLists().write(0, Collections.singletonList(new PlayerInfoData(profile, 0, EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()), WrappedChatComponent.fromText(profile.getName()))));
+
+        EnumSet<EnumWrappers.PlayerInfoAction> actions = EnumSet.of(
+                EnumWrappers.PlayerInfoAction.ADD_PLAYER,
+                EnumWrappers.PlayerInfoAction.UPDATE_LATENCY,
+                EnumWrappers.PlayerInfoAction.UPDATE_LISTED,
+                EnumWrappers.PlayerInfoAction.UPDATE_DISPLAY_NAME);
+        updatePacket.getPlayerInfoActions().write(0, actions);
+
+        PlayerInfoData data = new PlayerInfoData(
+                profile,
+                0,
+                EnumWrappers.NativeGameMode.fromBukkit(player.getGameMode()),
+                WrappedChatComponent.fromText(profile.getName()));
+        updatePacket.getPlayerInfoDataLists().write(1, Collections.singletonList(data));
 
         Bukkit.getOnlinePlayers().forEach(p -> {
             try {
